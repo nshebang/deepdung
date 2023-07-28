@@ -1,0 +1,48 @@
+#!/usr/bin/env python3
+EnsurePythonVersion(3, 6)
+
+import os
+import shutil
+
+bin='outside'
+platform = ARGUMENTS.get('platform', ARGUMENTS.get('p', 'linux'))
+build_type = ARGUMENTS.get('build', ARGUMENTS.get('b', 'debug'))
+
+platform_options = {
+    'linux': {
+        'cxx': 'g++',
+        'libs': ['GL', 'm', 'pthread', 'dl', 'rt', 'X11'],
+    },
+    'windows': {
+        'cxx': 'x86_64-w64-mingw32-g++',
+        'libs': ['pthread', 'opengl32', 'gdi32', 'winmm'],
+    },
+}
+
+if build_type not in ['debug', 'release']:
+    build_type = 'debug'
+
+env = Environment(
+    CXX = platform_options[platform]['cxx'],
+    CXXFLAGS = ['-std=c++17'],
+    CPPPATH = [f'./lib/raylib/{platform}/include'],
+    LIBS = [platform_options[platform]['libs']],
+)
+env['ENV']['TERM'] = os.environ['TERM']
+
+if 'windows' in platform:
+    env.Append(LINKFLAGS=['-static-libgcc', '-static-libstdc++'])
+    bin = f'{bin}.exe'
+
+print("Copying assets")
+if os.path.exists(f'./bin/{platform}/{build_type}/res'):
+    shutil.rmtree(f'./bin/{platform}/{build_type}/res')
+shutil.copytree('./res', f'./bin/{platform}/{build_type}/res')
+
+env.Program(
+    source = [
+        Glob('src/*.cpp'),
+        Glob(f'./lib/raylib/{platform}/lib/*.a')
+    ],
+    target = f'./bin/{platform}/{build_type}/{bin}'
+)
